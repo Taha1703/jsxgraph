@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Richtungsfeld & RK4-Animation</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+    input, button {
+      padding: 8px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    #box {
+      width: 800px;
+      height: 600px;
+      margin: 0 auto;
+    }
+   
+   
+   
+    
+    
+   
+  </style>
+</head>
+<body>
+  <h2>Richtungsfeld mit Runge-Kutta-Animation</h2>
+  <label>f(t, y) = </label>
+  <input type="text" id="funktion" value="sin(t) - y">
+  <button onclick="zeichneRichtungsfeld()">Richtungsfeld zeichnen</button>
+  <button onclick="starteAnimation()">Animation starten</button>
+
+  <div id="box" class="jxgbox"></div>
+
+  
+
+  <script>
+    const board = JXG.JSXGraph.initBoard('box', {
+      boundingbox: [-2, 5, 5, -2],
+      axis: true
+    });
+
+    
+
+    const farben = ['red', 'blue', 'purple', 'gold'];
+    let farbIndex = 0;
+    let richtungslinien = [];
+    let f;
+
+    const startPunkt = board.create('point', [0, 0], {
+      name: 'Start',
+      color: 'black',
+      size: 4,
+      fixed: false
+    });
+
+    function parseFunction(input) {
+      const replacements = ['sin', 'cos', 'tan', 'exp', 'log', 'sqrt', 'abs'];
+      replacements.forEach(fn => {
+        const regex = new RegExp(`\\b${fn}\\b`, 'g');
+        input = input.replace(regex, `Math.${fn}`);
+      });
+
+      try {
+        return new Function('t', 'y', `"use strict"; return ${input};`);
+      } catch {
+        alert("Ungültige Funktion!");
+        return null;
+      }
+    }
+
+    function zeichneRichtungsfeld() {
+      const fString = document.getElementById('funktion').value;
+      f = parseFunction(fString);
+      if (!f) return;
+
+      richtungslinien.forEach(l => board.removeObject(l));
+      richtungslinien = [];
+
+      const step = 0.5;
+      for (let t = -2; t <= 5; t += step) {
+        for (let y = -2; y <= 5; y += step) {
+          let dy = f(t, y);
+          let norm = Math.sqrt(1 + dy ** 2);
+          let dx = 0.2 / norm;
+          let dy_ = (dy * 0.2) / norm;
+
+          let p1 = [t - dx, y - dy_];
+          let p2 = [t + dx, y + dy_];
+
+          let arrow = board.create('arrow', [p1, p2], {
+            strokeColor: 'green',
+            strokeWidth: 1,
+            lastArrow: true
+          });
+          richtungslinien.push(arrow);
+        }
+      }
+    }
+
+    function rk4Step(t, y, h, f) {
+      const k1 = f(t, y);
+      const k2 = f(t + h / 2, y + h * k1 / 2);
+      const k3 = f(t + h / 2, y + h * k2 / 2);
+      const k4 = f(t + h, y + h * k3);
+      return y + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+    }
+
+    function starteAnimation() {
+      if (!f) {
+        alert("Bitte zuerst eine gültige Funktion eingeben.");
+        return;
+      }
+
+      const farbe = farben[farbIndex % farben.length];
+      farbIndex++;
+
+      startPunkt.setAttribute({ color: farbe });
+
+      const t0 = startPunkt.X();
+      const y0 = startPunkt.Y();
+
+      animiereRK4(t0, y0, farbe);
+    }
+
+    function animiereRK4(t0, y0, farbe, h = 0.2, steps = 40) {
+      let idx = 0;
+      let anzahlPfeile = 0;
+
+      function step() {
+        
+
+        const y1 = rk4Step(t0, y0, h, f);
+        const p1 = [t0, y0];
+        const p2 = [t0 + h, y1];
+
+        board.create('arrow', [p1, p2], {
+          strokeColor: farbe,
+          strokeWidth: 2,
+          lastArrow: true
+        });
+
+        t0 += h;
+        y0 = y1;
+        idx++;
+        anzahlPfeile++;
+
+        requestAnimationFrame(step);
+      }
+
+      step();
+    }
+
+    zeichneRichtungsfeld();
+  </script>
+</body>
+</html>

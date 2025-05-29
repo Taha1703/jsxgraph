@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Maschinenzahlen Visualisierung</title>
+  <script src="https://jsxgraph.org/distrib/jsxgraphcore.js"></script>
+  <link rel="stylesheet" href="https://jsxgraph.org/distrib/jsxgraph.css" />
+  <style>
+    #jxgbox1, #jxgbox2, #jxgbox3 {
+      width: 100%;
+      height: 150px;
+      margin-bottom: 30px;
+    }
+    .input-container {
+      margin-bottom: 15px;
+    }
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .jxgbox {
+      border: 1px solid #aaa;
+    }
+    .JXGtext { display: none; } 
+  </style>
+</head>
+<body>
+  <h2>Maschinenzahlen</h2>
+  <div class="input-container">
+    <label for="r">Exponent r: </label>
+    <input type="number" id="r" value="2" />
+    <label for="m">Mantissenlänge m: </label>
+    <input type="number" id="m" value="3" />
+    <button onclick="draw()">Zeichnen</button>
+  </div>
+
+  <div><strong>1. Maschinenzahlen</strong></div>
+  <div id="jxgbox1" class="jxgbox"></div>
+
+  <div><strong>2. Absoluter Abstand</strong></div>
+  <div id="jxgbox2" class="jxgbox"></div>
+
+  <div><strong>3. Relativer Abstand</strong></div>
+  <div id="jxgbox3" class="jxgbox"></div>
+
+  <script>
+    const board1 = JXG.JSXGraph.initBoard('jxgbox1', { axis: true, showNavigation: false, showCopyright: false, boundingbox: [-2, 1, 2, -1] });
+    const board2 = JXG.JSXGraph.initBoard('jxgbox2', { axis: true, showNavigation: false, showCopyright: false, boundingbox: [-2, 1, 2, -1] });
+    const board3 = JXG.JSXGraph.initBoard('jxgbox3', { axis: true, showNavigation: false, showCopyright: false, boundingbox: [-2, 1, 2, -1] });
+
+    let points1 = [], points2 = [], points3 = [];
+
+    function clearBoards() {
+      [points1, points2, points3].forEach(points => {
+        points.forEach(p => p.remove());
+      });
+      points1 = []; points2 = []; points3 = [];
+    }
+
+    function draw() {
+      clearBoards();
+
+      const r = parseInt(document.getElementById('r').value);
+      const m = parseInt(document.getElementById('m').value);
+
+      const machineNumbers = [];
+
+      // Maschinenzahlen berechnen
+      for (let e = -r; e <= r; e++) {
+        for (let i = 1; i < Math.pow(2, m); i++) {
+          const mantissa = i / Math.pow(2, m);
+          const value = mantissa * Math.pow(2, e);
+          machineNumbers.push(value);
+          machineNumbers.push(-value);
+        }
+      }
+
+      machineNumbers.push(0); 
+      machineNumbers.sort((a, b) => a - b);
+
+      
+      for (let x of machineNumbers) {
+        points1.push(board1.create('point', [x, 0], { size: 2, name: '', fixed: true, color: 'blue' }));
+      }
+
+   
+      const minX = Math.min(...machineNumbers);
+      const maxX = Math.max(...machineNumbers);
+      const steps = 500;
+
+      for (let i = 0; i <= steps; i++) {
+        const x = minX + (maxX - minX) * (i / steps);
+
+        
+        const nearest = machineNumbers.reduce((prev, curr) => {
+          return Math.abs(curr - x) < Math.abs(prev - x) ? curr : prev;
+        });
+
+        const absError = Math.abs(nearest - x);
+        const relError = x !== 0 ? absError / Math.abs(x) : 0;
+
+        points2.push(board2.create('point', [x, absError], { size: 2, name: '', fixed: true, color: 'red' }));
+        points3.push(board3.create('point', [x, relError], { size: 2, name: '', fixed: true, color: 'green' }));
+      }
+
+      
+      const padding = (maxX - minX) * 0.1;
+      board1.setBoundingBox([minX - padding, 1, maxX + padding, -1]);
+      board2.setBoundingBox([minX - padding, 1, maxX + padding, -1]);
+      board3.setBoundingBox([minX - padding, 1, maxX + padding, -1]);
+    }
+
+    draw(); 
+  </script>
+
+
+</body>
+</html>

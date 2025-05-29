@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Newton-Verfahren Visualisierung</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css">
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #box {
+            width: 800px;
+            height: 500px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h2>Newton-Verfahren Visualisierung</h2>
+
+    <label>Funktion f(x):</label>
+    <input type="text" id="funktion" value="x^2 - 2"><br>
+    
+    <label>Startwert x₀:</label>
+    <input type="number" id="startwert" value="2" step="any"><br>
+    
+    <button onclick="initialisieren()">Funktion zeichnen</button>
+    <button onclick="iterateNewton()">1x Newton-Schritt</button>
+    <button onclick="reset()">Zurücksetzen</button>
+    
+    <div id="box" class="jxgbox"></div>
+    
+    <script>
+        let board = JXG.JSXGraph.initBoard('box', {
+            boundingbox: [-5, 5, 5, -5],
+            axis: true
+        });
+    
+        let f, df, graph;
+        let xAktuell;
+        let punktAktuell;
+        let iterationen = [];
+        let tangenten = [];
+        let xPunkte = [];
+        let linien = [];
+    
+        function parseFunction(input) {
+            input = input.replace(/\^/g, '**');
+            return new Function('x', `return ${input};`);
+        }
+    
+        function numericDerivative(f, dx = 1e-6) {
+            return function(x) {
+                return (f(x + dx) - f(x - dx)) / (2 * dx);
+            };
+        }
+    
+        function initialisieren() {
+            const fString = document.getElementById('funktion').value;
+            const x0 = parseFloat(document.getElementById('startwert').value);
+    
+            if (isNaN(x0)) {
+                alert("Ungültiger Startwert");
+                return;
+            }
+    
+            try {
+                f = parseFunction(fString);
+                df = numericDerivative(f);
+    
+                
+                if (graph) board.removeObject(graph);
+                if (punktAktuell) board.removeObject(punktAktuell);
+                iterationen.forEach(p => board.removeObject(p));
+                tangenten.forEach(t => board.removeObject(t));
+                xPunkte.forEach(p => board.removeObject(p));
+                linien.forEach(l => board.removeObject(l));
+                iterationen = [];
+                tangenten = [];
+                xPunkte = [];
+                linien = [];
+    
+                
+                graph = board.create('functiongraph', [f], {strokeColor: 'blue'});
+    
+                
+                xAktuell = x0;
+                punktAktuell = board.create('point', [xAktuell, f(xAktuell)], {
+                    name: `f(x₀)`,
+                    color: 'red',
+                    size: 4,
+                    fixed: true
+                });
+    
+               
+                const xPunkt = board.create('point', [xAktuell, 0], {
+                    name: 'x₀',
+                    color: 'black',
+                    size: 3,
+                    fixed: true
+                });
+    
+                const linie = board.create('line', [[xAktuell, 0], [xAktuell, f(xAktuell)]], {
+                    straightFirst: false,
+                    straightLast: false,
+                    strokeColor: '#999',
+                    dash: 1
+                });
+    
+                xPunkte.push(xPunkt);
+                linien.push(linie);
+    
+            } catch (e) {
+                alert("Fehlerhafte Funktion!");
+                console.error(e);
+            }
+        }
+    
+        function iterateNewton() {
+            if (!f || !df) {
+                alert("Bitte zuerst Funktion zeichnen!");
+                return;
+            }
+    
+            const y = f(xAktuell);
+            const d = df(xAktuell);
+    
+            if (Math.abs(d) < 1e-8) {
+                alert("Ableitung zu klein, Abbruch!");
+                return;
+            }
+    
+            const index = iterationen.length + 1;
+            const xNeu = xAktuell - y / d;
+            const yNeu = f(xNeu);
+    
+            const punktNeu = board.create('point', [xNeu, yNeu], {
+                name: `f(x${index})`,
+                color: 'green',
+                size: 3,
+                fixed: true
+            });
+    
+            const tangente = board.create('line', [
+                [xAktuell, y],
+                [xNeu, 0]
+            ], {
+                straightFirst: false,
+                straightLast: true,
+                strokeColor: 'orange',
+                dash: 2
+            });
+    
+            
+            const xPunkt = board.create('point', [xNeu, 0], {
+                name: `x${index}`,
+                color: 'black',
+                size: 3,
+                fixed: true
+            });
+    
+            const linie = board.create('line', [[xNeu, 0], [xNeu, yNeu]], {
+                straightFirst: false,
+                straightLast: false,
+                strokeColor: '#999',
+                dash: 1
+            });
+    
+            iterationen.push(punktNeu);
+            tangenten.push(tangente);
+            xPunkte.push(xPunkt);
+            linien.push(linie);
+    
+            xAktuell = xNeu;
+            punktAktuell.moveTo([xAktuell, f(xAktuell)]);
+            punktAktuell.setAttribute({ name: `f(x${index})` });
+        }
+    
+        function reset() {
+            if (graph) board.removeObject(graph);
+            if (punktAktuell) board.removeObject(punktAktuell);
+            iterationen.forEach(p => board.removeObject(p));
+            tangenten.forEach(t => board.removeObject(t));
+            xPunkte.forEach(p => board.removeObject(p));
+            linien.forEach(l => board.removeObject(l));
+            iterationen = [];
+            tangenten = [];
+            xPunkte = [];
+            linien = [];
+            f = null;
+            df = null;
+            xAktuell = null;
+        }
+    
+       
+        initialisieren();
+    </script>

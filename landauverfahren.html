@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>θ-Verfahren für y' = λ·y(t)</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    input {
+      padding: 5px;
+      margin: 5px;
+      width: 100px;
+    }
+    #box {
+      width: 800px;
+      height: 600px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <h2>
+    Lösung der Testgleichung mit dem θ-Verfahren und Fehleranalyse
+  </h2>
+  <label>λ = </label><input id="lambda" value="1">
+  <label>t₀ = </label><input id="t0" value="0">
+  <label>y₀ = </label><input id="y0" value="1">
+  <label>θ = </label><input id="theta" value="0.5" min="0" max="1" step="0.1">
+  <label>T = </label><input id="T" value="5">
+  <label>N = </label><input id="N" value="20">
+  <button onclick="simuliere()">Start</button>
+  <p id="hDisplay"></p>
+  <p id="fehlerDisplay"></p>
+  <div id="box" class="jxgbox"></div>
+
+  <script>
+    const board = JXG.JSXGraph.initBoard('box', {
+      boundingbox: [-1, 10, 10, -2],  // Rechteck anpassen, damit exponentielle Kurve sichtbar ist
+      axis: true,
+    });
+
+    let graph = [];
+
+    function simuliere() {
+      // Alte Zeichnung löschen
+      graph.forEach(el => board.removeObject(el));
+      graph = [];
+
+      const λinput = document.getElementById("lambda").value;
+      const λ = parseFloat(λinput);
+      const t0 = parseFloat(document.getElementById("t0").value);
+      const y0 = parseFloat(document.getElementById("y0").value);
+      const θ = parseFloat(document.getElementById("theta").value);
+      const T = parseFloat(document.getElementById("T").value);
+      const N = parseInt(document.getElementById("N").value);
+      const h = (T - t0) / N;
+
+      document.getElementById("hDisplay").innerText = "Schrittweite h = " + h.toFixed(4);
+
+      let t = t0;
+      let y = y0;
+
+      // θ-Verfahren: y_{n+1} = (1 + h(1−θ)λ) / (1 − hθλ) * y_n
+      const q = (1 + h * (1 - θ) * λ) / (1 - h * θ * λ);
+
+      const numCurve = board.create('curve', [[t], [y]], { strokeColor: 'blue', name: 'Numerisch' });
+      graph.push(numCurve);
+
+      for (let i = 0; i < N; i++) {
+        const tNext = t + h;
+        const yNext = q * y;
+
+        let pfeil = board.create('arrow', [[t, y], [tNext, yNext]], {
+          strokeColor: 'blue',
+          strokeWidth: 2,
+          lastArrow: true
+        });
+        graph.push(pfeil);
+
+        numCurve.dataX.push(tNext);
+        numCurve.dataY.push(yNext);
+
+        t = tNext;
+        y = yNext;
+      }
+
+      // Exakte Lösung als glatte Kurve (200 Punkte)
+      const exactT = [];
+      const exactY = [];
+      const feinN = 200;
+      const feinH = (T - t0) / feinN;
+      for (let i = 0; i <= feinN; i++) {
+        const ti = t0 + i * feinH;
+        exactT.push(ti);
+        exactY.push(y0 * Math.exp(λ * (ti - t0)));
+      }
+      const exactCurve = board.create('curve', [exactT, exactY], {
+        strokeColor: 'green',
+        dash: 2,
+        strokeWidth: 2,
+        name: 'Exakte Lösung'
+      });
+      graph.push(exactCurve);
+
+      // Fehler berechnen (relativer Fehler am Endpunkt)
+      const yExact = y0 * Math.exp(λ * T);
+      const relFehler = Math.abs((y - yExact) / yExact);
+      document.getElementById("fehlerDisplay").innerText = 
+        `Relativer Fehler bei t = ${T}: ${relFehler.toExponential(3)}`;
+    }
+  </script>
+</body>
+</html>

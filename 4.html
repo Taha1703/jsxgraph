@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D DGL Simulation</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    input,
+    select {
+      padding: 5px;
+      margin: 5px;
+      width: 120px;
+    }
+    #box {
+      width: 900px;
+      height: 650px;
+      margin: 0 auto;
+      position: relative;
+    }
+    #legend {
+      width: 900px;
+      margin: 0 auto 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    #legend span {
+      margin: 0 15px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      color: white;
+      font-family: sans-serif;
+    }
+    .rot {
+      background-color: #d9534f; /* Bootstrap Red */
+    }
+    .gruen {
+      background-color: #5cb85c; /* Bootstrap Green */
+    }
+    .schwarz {
+      background-color: #222; /* Schwarz */
+    }
+    .jxgboard text {
+  fill: rgba(255, 255, 255, 0); /* macht die Zahlen komplett durchsichtig */
+  /* alternativ: fill: white; wenn der Hintergrund dunkel ist */
+}
+
+  </style>
+</head>
+<body>
+  <h2>DGL in 3D:</h2>
+
+  <div id="legend">
+    <span class="rot">Zeit t (rot)</span>
+    <span class="gruen">Re(y) (grün)</span>
+    <span class="schwarz">Im(y) (schwarz)</span>
+  </div>
+
+  <label>Funktion:</label>
+  <select id="funktion">
+    <option value="exponentiell">Exponentiell Wachstum/Zerfall: λ · y</option>
+    <option value="sinus">Sinus-Modulation: sin(λ·t) · y</option>
+    <option value="quadratisch">Quadratische Nichtlinearität: λ · y²</option>
+    <option value="harmonisch">Harmonische Schwingung: λ · cos(t) · y</option>
+    <option value="logistisch">Logistische Funktion: λ · y · (1 - y)</option>
+  </select>
+
+  <label>λ = </label><input id="lambda" value="0.2+1i" />
+  <label>t₀ = </label><input id="t0" value="0" />
+  <label>y₀ = </label><input id="y0" value="1" />
+  <label>h = </label><input id="h" value="0.1" />
+  <label>Schritte = </label><input id="steps" value="100" />
+  <button onclick="simuliere()">Start</button>
+
+  <div id="box" class="jxgbox"></div>
+
+  <script>
+    const board = JXG.JSXGraph.initBoard('box', {
+      boundingbox: [-8, -3, 8, 8],
+      keepaspectratio: false,
+      showCopyright: false,
+      showNavigation: false,
+      axis: false,
+      pan: { needTwoFingers: true },
+    });
+
+    const view = board.create('view3d', [
+  [-6, -3],
+  [10, 10],
+  [[0, 10], [-5, 5], [-5, 5]]
+], {
+  ticks: { drawLabels: false, drawZero: false }
+});
+
+
+    function createAxisArrow(start, end, label, color) {
+      const line = view.create('line3d', [start, end], {
+        strokeColor: color,
+        strokeWidth: 3,
+        straightFirst: false,
+        straightLast: false,
+        lastArrow: true,
+      });
+
+      const labelPos = [end[0] + 0.4, end[1], end[2]];
+      const text = view.create('text', labelPos, label, {
+        fontSize: 20,
+        fontWeight: 'bold',
+        strokeColor: color,
+        fixed: true,
+        anchorX: 'left',
+        anchorY: 'middle',
+      });
+
+      return { line, text };
+    }
+
+    createAxisArrow([0, 0, 0], [10, 0, 0], 't', 'red');
+    createAxisArrow([0, 0, 0], [0, 6, 0], 'Re(y)', 'green');
+    createAxisArrow([0, 0, 0], [0, 0, 6], 'Im(y)', 'black');
+
+    let curve3d = null;
+
+    function simuliere() {
+      if (curve3d) view.removeObject(curve3d);
+
+      const auswahl = document.getElementById('funktion').value;
+      const lambdaStr = document.getElementById('lambda').value;
+      const t0 = parseFloat(document.getElementById('t0').value);
+      const y0 = math.complex(document.getElementById('y0').value);
+      const h = parseFloat(document.getElementById('h').value);
+      const steps = parseInt(document.getElementById('steps').value);
+
+      const lambda = math.complex(lambdaStr);
+
+      const points = [];
+      let t = t0;
+      let y = y0;
+
+      for (let i = 0; i <= steps; i++) {
+        points.push([t, y.re, y.im]);
+
+        let dy;
+        if (auswahl === 'exponentiell') {
+          dy = math.multiply(lambda, y);
+        } else if (auswahl === 'sinus') {
+          dy = math.multiply(math.sin(lambda.re * t), y);
+        } else if (auswahl === 'quadratisch') {
+          dy = math.multiply(lambda, math.square(y));
+        } else if (auswahl === 'harmonisch') {
+          dy = math.multiply(math.cos(t), math.multiply(lambda, y));
+        } else if (auswahl === 'logistisch') {
+          dy = math.multiply(lambda, math.multiply(y, math.subtract(1, y)));
+        }
+
+        y = math.add(y, math.multiply(h, dy));
+        t += h;
+      }
+
+      curve3d = view.create('curve3d', [points], {
+        strokeColor: 'blue',
+        strokeWidth: 2,
+      });
+    }
+  </script>
+</body>
+</html>
+// eigenwerte und die richtige lösung plotten ander farbe, stabilitsbereich andfers plotten nur den rand 
+//

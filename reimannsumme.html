@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Riemann-Summe Visualisierung</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css">
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button, select {
+            padding: 8px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #box {
+            width: 800px;
+            height: 500px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Riemann-Summe Visualisierung</h2>
+
+    <label>Funktion f(x): </label>
+    <input type="text" id="funktion" value="x^2"><br>
+
+    <label>Intervall [a, b]: </label>
+    <input type="number" id="a" value="0" step="any">
+    <input type="number" id="b" value="2" step="any"><br>
+
+    <label>Anzahl der Rechtecke (n): </label>
+    <input type="number" id="n" value="10"><br>
+
+    <label>Methode: </label>
+    <select id="methode">
+        <option value="left">Links</option>
+        <option value="right">Rechts</option>
+        <option value="mid">Mitte</option>
+    </select><br>
+
+    <button onclick="zeichne()">Riemann-Summe berechnen</button>
+    <p id="ergebnis"></p>
+    <p id="fehler"></p>
+
+    <div id="box" class="jxgbox"></div>
+
+    <script>
+        let board = JXG.JSXGraph.initBoard('box', {
+            boundingbox: [-1, 10, 5, -1],
+            axis: true
+        });
+
+        let rechtecke = [];
+        let funktionsGraph;
+        let klickZaehler = 0;
+
+        function parseFunction(input) {
+            input = input.replace(/\^/g, '**');
+            const replacements = ['sin', 'cos', 'tan', 'log', 'sqrt', 'exp', 'abs'];
+            replacements.forEach(fn => {
+                input = input.replace(new RegExp(`\\b${fn}\\b`, 'g'), `Math.${fn}`);
+            });
+            return new Function('x', `return ${input};`);
+        }
+
+        function berechneExaktesIntegral(f, a, b) {
+            // einfache Trapezregel mit hoher Genauigkeit
+            let N = 10000;
+            let h = (b - a) / N;
+            let sum = 0.5 * (f(a) + f(b));
+            for (let i = 1; i < N; i++) {
+                sum += f(a + i * h);
+            }
+            return sum * h;
+        }
+
+        function zeichne() {
+            klickZaehler++;
+
+            rechtecke.forEach(r => board.removeObject(r));
+            if (funktionsGraph) board.removeObject(funktionsGraph);
+            rechtecke = [];
+
+            const fStr = document.getElementById('funktion').value;
+            const a = parseFloat(document.getElementById('a').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const n = parseInt(document.getElementById('n').value);
+            const methode = document.getElementById('methode').value;
+
+            try {
+                const f = parseFunction(fStr);
+                const dx = (b - a) / n;
+                let summe = 0;
+
+                for (let i = 0; i < n; i++) {
+                    let xi;
+                    if (methode === "left") xi = a + i * dx;
+                    else if (methode === "right") xi = a + (i + 1) * dx;
+                    else xi = a + (i + 0.5) * dx;
+
+                    let y = f(xi);
+                    summe += y * dx;
+
+                    let rechteck = board.create('polygon', [
+                        [a + i * dx, 0],
+                        [a + i * dx, y],
+                        [a + (i + 1) * dx, y],
+                        [a + (i + 1) * dx, 0]
+                    ], {
+                        fillColor: '#aaf',
+                        fillOpacity: 0.4,
+                        borders: { strokeColor: '#00f' }
+                    });
+                    rechtecke.push(rechteck);
+                }
+
+                funktionsGraph = board.create('functiongraph', [f], { strokeColor: 'green' });
+
+                // Berechne exaktes Integral & Fehler
+                const exakt = berechneExaktesIntegral(f, a, b);
+                const fehler = Math.abs(summe - exakt);
+                const relFehler = fehler / Math.abs(exakt);
+
+                // Ausgabe
+                document.getElementById('ergebnis').innerText = `Riemann-Summe ≈ ${summe.toFixed(6)}`;
+                document.getElementById('fehler').innerText = `Fehler ≈ ${fehler.toExponential(3)} (${(relFehler * 100).toFixed(2)}%)`;
+
+                // Easter Egg Konfetti
+                if (klickZaehler === 10) {
+                    confetti({
+                        particleCount: 150,
+                        spread: 180,
+                        origin: { y: 0.6 }
+                    });
+                }
+
+                // Mega-Konfetti bei 100
+                if (klickZaehler === 100) {
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            confetti({
+                                particleCount: 200,
+                                spread: 360,
+                                origin: { x: Math.random(), y: Math.random() / 2 }
+                            });
+                        }, i * 500);
+                    }
+                }
+
+            } catch (e) {
+                alert("Ungültige Funktion!");
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>

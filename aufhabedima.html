@@ -1,0 +1,143 @@
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Banach-Fixpunktiteration</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script src="https://unpkg.com/mathjs/lib/browser/math.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        input, button {
+            padding: 8px;
+            margin: 8px;
+            font-size: 16px;
+        }
+        #box {
+            width: 800px;
+            height: 500px;
+            margin: 0 auto;
+        }
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #aaa;
+            padding: 6px 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Banach-Fixpunktiteration</h2>
+
+    <label>g(x):</label>
+    <input type="text" id="gx" value="(x + 2/x)/2">
+    <label>x₀:</label>
+    <input type="number" id="x0" step="any" value="1">
+    <button onclick="start()">Start</button>
+    <button onclick="iterate()">1x Iteration</button>
+    <button onclick="reset()">Zurücksetzen</button>
+    
+    <div id="box" class="jxgbox"></div>
+    
+    <table id="table">
+        <thead>
+            <tr><th>n</th><th>xₙ</th><th>g(xₙ)</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    
+    <script>
+        const board = JXG.JSXGraph.initBoard('box', {
+            boundingbox: [-2, 4, 4, -2],
+            axis: true,
+            showCopyright: false,
+            showNavigation: false
+        });
+    
+        let gx = null;
+        let fGraph = null;
+        let diag = null;
+        let xVals = [];
+        let points = [];
+    
+        function parseFunction(expr) {
+            expr = expr.replace(/\^/g, '**');
+            return function(x) {
+                return math.evaluate(expr, {x});
+            };
+        }
+    
+        function start() {
+            reset();
+            const expr = document.getElementById('gx').value;
+            const x0 = parseFloat(document.getElementById('x0').value);
+            if (isNaN(x0)) {
+                alert("Ungültiger Startwert");
+                return;
+            }
+    
+            try {
+                gx = parseFunction(expr);
+                gx(x0); // Testauswertung
+    
+                fGraph = board.create('functiongraph', [gx], {strokeColor: 'blue', strokeWidth: 2});
+                diag = board.create('functiongraph', [x => x], {strokeColor: 'gray', dash: 2});
+    
+                xVals.push(x0);
+                drawPoint(0, x0);
+                updateTable();
+    
+            } catch (e) {
+                alert("Ungültige Funktion: " + e.message);
+            }
+        }
+    
+        function iterate() {
+            if (!gx || xVals.length === 0) return;
+            const xOld = xVals[xVals.length - 1];
+            const xNew = gx(xOld);
+            xVals.push(xNew);
+            drawPoint(xVals.length - 1, xNew);
+            updateTable();
+        }
+    
+        function drawPoint(n, x) {
+            const y = gx(x);
+            const pt = board.create('point', [x, y], {
+                name: 'x' + n,
+                color: 'red',
+                size: 3,
+                fixed: true
+            });
+            points.push(pt);
+        }
+    
+        function updateTable() {
+            const tbody = document.querySelector('#table tbody');
+            tbody.innerHTML = '';
+            for (let i = 0; i < xVals.length; i++) {
+                const xi = xVals[i];
+                const gxi = gx(xi);
+                const row = `<tr><td>${i}</td><td>${xi.toFixed(6)}</td><td>${gxi.toFixed(6)}</td></tr>`;
+                tbody.innerHTML += row;
+            }
+        }
+    
+        function reset() {
+            board.removeObject(fGraph);
+            board.removeObject(diag);
+            for (const p of points) {
+                board.removeObject(p);
+            }
+            points = [];
+            xVals = [];
+            const tbody = document.querySelector('#table tbody');
+            tbody.innerHTML = '';
+        }
+    </script>
